@@ -16,7 +16,8 @@ fn main() -> Result<()> {
 
     if let Some(&bytes) = matches.get_one::<i64>("bytes") {
         dbg!(bytes);
-        read_bytes_end(&mut f, bytes)?;
+        let s = read_bytes_end(&mut f, bytes)?;
+        print!("{s}");
     } else if let Some(&lines) = matches.get_one::<i64>("lines") {
         dbg!(lines);
         read_lines_end(&mut f, lines)?;
@@ -31,14 +32,13 @@ fn read_lines_end(f: &mut File, lines: i64) -> Result<()> {
     todo!()
 }
 
-fn read_bytes_end(f: &mut File, bytes: i64) -> Result<()> {
+fn read_bytes_end(f: &mut File, bytes: i64) -> Result<String> {
     let max_len = f.metadata()?.len();
     let len = (bytes).clamp(0, max_len as i64);
-    let mut buf = vec![0; len.try_into().unwrap()];
+    let mut buf = vec![0; len as usize];
     f.seek(std::io::SeekFrom::End(-len))?;
     f.read_exact(&mut buf)?;
-    print!("{}", std::str::from_utf8(&buf)?);
-    Ok(())
+    Ok(String::from_utf8(buf)?)
 }
 
 mod error {

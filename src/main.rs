@@ -1,11 +1,12 @@
-use core::error::Error;
 use std::{
     fs::File,
     io::{Read, Seek},
     path::PathBuf,
 };
 
-fn main() -> Result<(), Box<dyn Error>> {
+use error::Result;
+
+fn main() -> Result<()> {
     let matches = commands::cli().get_matches();
 
     let path = matches
@@ -18,7 +19,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         read_bytes_end(&mut f, bytes)?;
     } else if let Some(&lines) = matches.get_one::<i64>("lines") {
         dbg!(lines);
-        todo!("make lines function")
+        read_lines_end(&mut f, lines)?;
     } else {
         unreachable!("must have lines or bytes passed")
     };
@@ -26,7 +27,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn read_bytes_end(f: &mut File, bytes: i64) -> Result<(), Box<dyn Error>> {
+fn read_lines_end(f: &mut File, lines: i64) -> Result<()> {
+    todo!()
+}
+
+fn read_bytes_end(f: &mut File, bytes: i64) -> Result<()> {
     let max_len = f.metadata()?.len();
     let len = (bytes).clamp(0, max_len as i64);
     let mut buf = vec![0; len.try_into().unwrap()];
@@ -34,6 +39,12 @@ fn read_bytes_end(f: &mut File, bytes: i64) -> Result<(), Box<dyn Error>> {
     f.read_exact(&mut buf)?;
     print!("{}", std::str::from_utf8(&buf)?);
     Ok(())
+}
+
+mod error {
+    pub type Error = Box<dyn std::error::Error>;
+
+    pub type Result<T> = std::result::Result<T, Error>;
 }
 
 mod commands {

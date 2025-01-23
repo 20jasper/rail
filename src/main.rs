@@ -2,19 +2,16 @@ use core::error::Error;
 use std::{
     fs::File,
     io::{Read, Seek},
+    path::PathBuf,
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut args = std::env::args();
-    args.next();
-    let file = args.next().unwrap();
-    args.next();
-    let bytes = args
-        .next()
-        .and_then(|x| x.parse::<i64>().ok())
-        .unwrap_or(10);
+    let matches = commands::cli().get_matches();
 
-    let mut f = File::open(file)?;
+    let path = matches.get_one::<PathBuf>("PATH").unwrap();
+    let bytes = *matches.get_one::<i64>("bytes").unwrap();
+
+    let mut f = File::open(path)?;
     let max_len = f.metadata()?.len();
     let len = (bytes).clamp(0, max_len as i64);
 
@@ -24,4 +21,22 @@ fn main() -> Result<(), Box<dyn Error>> {
     print!("{}", std::str::from_utf8(&buf)?);
 
     Ok(())
+}
+
+mod commands {
+    use std::path::PathBuf;
+
+    use clap::{arg, Command};
+
+    pub fn cli() -> Command {
+        Command::new("rail")
+            .about("Print the end of a file")
+            .arg_required_else_help(true)
+            .arg(arg!(<PATH> ... "File to pull from").value_parser(clap::value_parser!(PathBuf)))
+            .arg(
+                arg!(-c --bytes <COUNT>)
+                    .default_value("10")
+                    .value_parser(clap::value_parser!(i64)),
+            )
+    }
 }

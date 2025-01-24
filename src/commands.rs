@@ -6,7 +6,7 @@ pub fn cli() -> Command {
     Command::new("rail")
         .about("Print the end of a file")
         .arg_required_else_help(true)
-        .arg(arg!(<PATH> ... "File to pull from").value_parser(clap::value_parser!(PathBuf)))
+        .arg(arg!(<PATH> ... "File to read from").value_parser(clap::value_parser!(PathBuf)))
         .arg(arg!(-c --bytes <COUNT>).value_parser(clap::value_parser!(i64)))
         .arg(
             arg!(-n --lines <COUNT>)

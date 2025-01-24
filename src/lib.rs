@@ -28,16 +28,30 @@ pub fn tail_file(matches: clap::ArgMatches) -> Result<String> {
     Ok(s)
 }
 
+/// C std lib `BUFSIZE` says this is good so sounds good to me
+const BUF_SIZE: usize = 8096;
+
 fn read_lines_end(f: &mut File, lines: i64) -> Result<String> {
-    let mut buf = String::default();
-    f.read_to_string(&mut buf)?;
-    let count = buf.lines().count();
-    Ok(buf
-        .lines()
-        .skip(count - lines as usize)
-        .collect::<Vec<_>>()
-        .join("\n")
-        + "\n")
+    let max_len = f.metadata()?.len();
+    let len = (BUF_SIZE).clamp(0, max_len as usize);
+    let mut buf = vec![0; len];
+    f.seek(std::io::SeekFrom::End(-(len as i64)))?;
+    f.read_exact(&mut buf)?;
+
+    let newline_indexes = buf
+        .iter()
+        .rev()
+        .enumerate()
+        .filter_map(|(i, &b)| (b == b'\n').then_some(i));
+
+    let bytes = newline_indexes
+        .enumerate()
+        .find_map(|(newline_i, byte_i)| (newline_i == lines as usize).then_some(byte_i))
+        .unwrap();
+
+    let s = read_bytes_end(f, bytes as i64)?;
+
+    Ok(s)
 }
 
 fn read_bytes_end(f: &mut File, bytes: i64) -> Result<String> {

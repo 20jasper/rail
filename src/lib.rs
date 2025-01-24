@@ -40,6 +40,7 @@ fn read_lines_end(f: &mut File, mut lines: usize) -> Result<String> {
         let to_seek = -((len).min(max_len - bytes) as i64);
         f.seek_relative(to_seek)?;
         f.read_exact(&mut buf)?;
+        f.seek_relative(to_seek)?;
 
         let (b, l) = nth_line(&buf, lines);
         bytes += b;
@@ -47,9 +48,6 @@ fn read_lines_end(f: &mut File, mut lines: usize) -> Result<String> {
         if lines == 0 {
             break;
         }
-
-        // move cursor back
-        f.seek_relative(to_seek)?;
     }
 
     let s = read_bytes_end(f, bytes as i64)?;

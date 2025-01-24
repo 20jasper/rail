@@ -3,7 +3,7 @@ pub mod error;
 
 use std::{
     fs::File,
-    io::{Read, Seek},
+    io::{self, Read, Seek},
     path::PathBuf,
 };
 
@@ -24,7 +24,7 @@ pub fn tail_file(matches: clap::ArgMatches) -> Result<String> {
         File::open(path).map_err(|_| format!("Error opening {path:?}"))?
     };
 
-    let s = if let Some(&bytes) = matches.get_one::<i64>("bytes") {
+    let vec = if let Some(&bytes) = matches.get_one::<i64>("bytes") {
         read_bytes_end(&mut f, bytes)?
     } else if let Some(&lines) = matches.get_one::<usize>("lines") {
         read_lines_end(&mut f, lines)?
@@ -32,13 +32,13 @@ pub fn tail_file(matches: clap::ArgMatches) -> Result<String> {
         unreachable!("must have lines or bytes passed")
     };
 
-    Ok(s)
+    Ok(String::from_utf8(vec)?)
 }
 
 /// C std lib `BUFSIZE` says this is good so sounds good to me
 const BUF_SIZE: usize = 8096;
 
-fn read_lines_end(f: &mut File, mut lines: usize) -> Result<String> {
+fn read_lines_end(f: &mut File, mut lines: usize) -> io::Result<Vec<u8>> {
     let max_len = f.metadata()?.len() as usize;
     let len = (BUF_SIZE).clamp(0, max_len);
     let mut buf = vec![0; len];
@@ -76,11 +76,11 @@ fn nth_line(buf: &[u8], n: usize) -> (usize, usize) {
     }
 }
 
-fn read_bytes_end(f: &mut File, bytes: i64) -> Result<String> {
+fn read_bytes_end(f: &mut File, bytes: i64) -> io::Result<Vec<u8>> {
     let max_len = f.metadata()?.len();
     let len = (bytes).clamp(0, max_len as i64);
     let mut buf = vec![0; len as usize];
     f.seek(std::io::SeekFrom::End(-len))?;
     f.read_exact(&mut buf)?;
-    Ok(String::from_utf8(buf)?)
+    Ok(buf)
 }

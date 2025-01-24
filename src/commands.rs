@@ -11,7 +11,7 @@ pub fn cli() -> Command {
         .arg(
             arg!(-n --lines <COUNT>)
                 .default_value("10")
-                .value_parser(clap::value_parser!(i64)),
+                .value_parser(clap::value_parser!(usize)),
         )
         .group(ArgGroup::new("measurement").args(["bytes", "lines"]))
 }

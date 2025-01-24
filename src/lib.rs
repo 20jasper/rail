@@ -17,7 +17,7 @@ pub fn tail_file(matches: clap::ArgMatches) -> Result<String> {
 
     let s = if let Some(&bytes) = matches.get_one::<i64>("bytes") {
         read_bytes_end(&mut f, bytes)?
-    } else if let Some(&lines) = matches.get_one::<i64>("lines") {
+    } else if let Some(&lines) = matches.get_one::<usize>("lines") {
         read_lines_end(&mut f, lines)?
     } else {
         unreachable!("must have lines or bytes passed")
@@ -29,7 +29,7 @@ pub fn tail_file(matches: clap::ArgMatches) -> Result<String> {
 /// C std lib `BUFSIZE` says this is good so sounds good to me
 const BUF_SIZE: usize = 8096;
 
-fn read_lines_end(f: &mut File, mut lines: i64) -> Result<String> {
+fn read_lines_end(f: &mut File, mut lines: usize) -> Result<String> {
     let max_len = f.metadata()?.len();
     let len = (BUF_SIZE).clamp(0, max_len as usize);
     let mut buf = vec![0; len];
@@ -41,10 +41,10 @@ fn read_lines_end(f: &mut File, mut lines: i64) -> Result<String> {
         f.seek_relative(to_seek)?;
         f.read_exact(&mut buf)?;
 
-        let (b, l) = nth_line(&buf, lines as usize);
+        let (b, l) = nth_line(&buf, lines);
         bytes += b as i64;
-        lines -= l as i64;
-        if lines <= 0 {
+        lines -= l;
+        if lines == 0 {
             break;
         }
 

@@ -21,3 +21,12 @@ fn defaults_to_ten() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn should_return_whole_file() -> Result<()> {
+    let matches = commands::cli().get_matches_from(["rail", "-n", "1000", "tests/assets/test.txt"]);
+
+    assert_eq!(tail_file(matches)?, "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. \nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n");
+
+    Ok(())
+}

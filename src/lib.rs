@@ -30,19 +30,19 @@ pub fn tail_file(matches: clap::ArgMatches) -> Result<String> {
 const BUF_SIZE: usize = 8096;
 
 fn read_lines_end(f: &mut File, mut lines: usize) -> Result<String> {
-    let max_len = f.metadata()?.len();
-    let len = (BUF_SIZE).clamp(0, max_len as usize);
+    let max_len = f.metadata()?.len() as usize;
+    let len = (BUF_SIZE).clamp(0, max_len);
     let mut buf = vec![0; len];
     f.seek(std::io::SeekFrom::End(0))?;
 
-    let mut bytes = 0;
-    for _ in 0..=(max_len as usize / len) {
-        let to_seek = -(len as i64).min(max_len as i64 - bytes);
+    let mut bytes: usize = 0;
+    for _ in 0..=(max_len / len) {
+        let to_seek = -((len).min(max_len - bytes) as i64);
         f.seek_relative(to_seek)?;
         f.read_exact(&mut buf)?;
 
         let (b, l) = nth_line(&buf, lines);
-        bytes += b as i64;
+        bytes += b;
         lines -= l;
         if lines == 0 {
             break;
@@ -52,7 +52,7 @@ fn read_lines_end(f: &mut File, mut lines: usize) -> Result<String> {
         f.seek_relative(to_seek)?;
     }
 
-    let s = read_bytes_end(f, bytes)?;
+    let s = read_bytes_end(f, bytes as i64)?;
 
     Ok(s)
 }

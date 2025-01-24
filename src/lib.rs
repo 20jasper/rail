@@ -16,10 +16,8 @@ pub fn tail_file(matches: clap::ArgMatches) -> Result<String> {
     let mut f = File::open(path)?;
 
     let s = if let Some(&bytes) = matches.get_one::<i64>("bytes") {
-        dbg!(bytes);
         read_bytes_end(&mut f, bytes)?
     } else if let Some(&lines) = matches.get_one::<i64>("lines") {
-        dbg!(lines);
         read_lines_end(&mut f, lines)?
     } else {
         unreachable!("must have lines or bytes passed")
@@ -31,27 +29,47 @@ pub fn tail_file(matches: clap::ArgMatches) -> Result<String> {
 /// C std lib `BUFSIZE` says this is good so sounds good to me
 const BUF_SIZE: usize = 8096;
 
-fn read_lines_end(f: &mut File, lines: i64) -> Result<String> {
+fn read_lines_end(f: &mut File, mut lines: i64) -> Result<String> {
     let max_len = f.metadata()?.len();
     let len = (BUF_SIZE).clamp(0, max_len as usize);
     let mut buf = vec![0; len];
-    f.seek(std::io::SeekFrom::End(-(len as i64)))?;
-    f.read_exact(&mut buf)?;
+    f.seek(std::io::SeekFrom::End(0))?;
 
+    let mut bytes = 0;
+    for _ in 0..=(max_len as usize / len) {
+        let to_seek = -(len as i64).min(max_len as i64 - bytes);
+        f.seek_relative(to_seek)?;
+        f.read_exact(&mut buf)?;
+
+        let (b, l) = nth_line(&buf, lines as usize);
+        bytes += b as i64;
+        lines -= l as i64;
+        if lines <= 0 {
+            break;
+        }
+
+        // move cursor back
+        f.seek_relative(to_seek)?;
+    }
+
+    let s = read_bytes_end(f, bytes)?;
+
+    Ok(s)
+}
+
+/// return byte offset and lines left until the nth line
+fn nth_line(buf: &[u8], n: usize) -> (usize, usize) {
     let newline_indexes = buf
         .iter()
         .rev()
         .enumerate()
         .filter_map(|(i, &b)| (b == b'\n').then_some(i));
 
-    let bytes = newline_indexes
-        .enumerate()
-        .find_map(|(newline_i, byte_i)| (newline_i == lines as usize).then_some(byte_i))
-        .unwrap();
-
-    let s = read_bytes_end(f, bytes as i64)?;
-
-    Ok(s)
+    if let Some(offset) = newline_indexes.clone().nth(n) {
+        (offset, n)
+    } else {
+        (buf.len(), newline_indexes.clone().count())
+    }
 }
 
 fn read_bytes_end(f: &mut File, bytes: i64) -> Result<String> {

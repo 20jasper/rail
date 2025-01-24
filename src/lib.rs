@@ -10,10 +10,19 @@ use std::{
 use error::Result;
 
 pub fn tail_file(matches: clap::ArgMatches) -> Result<String> {
-    let path = matches
-        .get_one::<PathBuf>("PATH")
-        .expect("path is required");
-    let mut f = File::open(path)?;
+    let mut f = {
+        let path = matches
+            .get_one::<PathBuf>("PATH")
+            .expect("path is required");
+
+        if !path.exists() {
+            return Err(format!("path {path:?} does not exist").into());
+        }
+        if !path.is_file() {
+            return Err(format!("path {path:?} is not a file").into());
+        }
+        File::open(path).map_err(|_| format!("Error opening {path:?}"))?
+    };
 
     let s = if let Some(&bytes) = matches.get_one::<i64>("bytes") {
         read_bytes_end(&mut f, bytes)?

@@ -30,3 +30,13 @@ fn should_return_whole_file() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn file_bigger_than_buffer() -> Result<()> {
+    let matches =
+        commands::cli().get_matches_from(["rail", "-n", "100000", "tests/assets/11kb-test.txt"]);
+
+    assert_ne!(tail_file(matches)?, "Rust is a must\n".repeat(759));
+
+    Ok(())
+}

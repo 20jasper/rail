@@ -29,7 +29,15 @@ pub fn tail_file(matches: clap::ArgMatches) -> Result<String> {
 }
 
 fn read_lines_end(f: &mut File, lines: i64) -> Result<String> {
-    todo!()
+    let mut buf = String::default();
+    f.read_to_string(&mut buf)?;
+    let count = buf.lines().count();
+    Ok(buf
+        .lines()
+        .skip(count - lines as usize)
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n")
 }
 
 fn read_bytes_end(f: &mut File, bytes: i64) -> Result<String> {

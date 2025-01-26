@@ -9,7 +9,7 @@ use std::{
 
 use error::Result;
 
-pub fn tail_file(matches: clap::ArgMatches) -> Result<String> {
+pub fn tail_file(matches: &clap::ArgMatches) -> Result<String> {
     let mut f = {
         let path = matches
             .get_one::<PathBuf>("PATH")
@@ -23,6 +23,9 @@ pub fn tail_file(matches: clap::ArgMatches) -> Result<String> {
         }
         File::open(path).map_err(|_| format!("Error opening {path:?}"))?
     };
+
+    let follow = matches.get_flag("follow");
+    dbg!(follow);
 
     let vec = if let Some(&bytes) = matches.get_one::<i64>("bytes") {
         read_bytes_end(&mut f, bytes)?
@@ -76,7 +79,7 @@ fn nth_line(buf: &[u8], n: usize) -> (usize, usize) {
     }
 }
 
-fn read_bytes_end(f: &mut File, bytes: i64) -> io::Result<Vec<u8>> {
+pub fn read_bytes_end(f: &mut File, bytes: i64) -> io::Result<Vec<u8>> {
     let max_len = f.metadata()?.len();
     let len = (bytes).clamp(0, max_len as i64);
     let mut buf = vec![0; len as usize];

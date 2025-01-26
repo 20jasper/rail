@@ -14,4 +14,5 @@ pub fn cli() -> Command {
                 .value_parser(clap::value_parser!(usize)),
         )
         .group(ArgGroup::new("measurement").args(["bytes", "lines"]))
+        .arg(arg!(-f --follow "follow file descriptor"))
 }

@@ -4,30 +4,15 @@ pub mod error;
 use std::{
     fs::File,
     io::{self, Read, Seek},
-    path::PathBuf,
 };
 
 use error::Result;
 
-pub fn tail_file(matches: clap::ArgMatches) -> Result<String> {
-    let mut f = {
-        let path = matches
-            .get_one::<PathBuf>("PATH")
-            .expect("path is required");
-
-        if !path.exists() {
-            return Err(format!("path {path:?} does not exist").into());
-        }
-        if !path.is_file() {
-            return Err(format!("path {path:?} is not a file").into());
-        }
-        File::open(path).map_err(|_| format!("Error opening {path:?}"))?
-    };
-
+pub fn tail_file(matches: &clap::ArgMatches, f: &mut File) -> Result<String> {
     let vec = if let Some(&bytes) = matches.get_one::<i64>("bytes") {
-        read_bytes_end(&mut f, bytes)?
+        read_bytes_end(f, bytes)?
     } else if let Some(&lines) = matches.get_one::<usize>("lines") {
-        read_lines_end(&mut f, lines)?
+        read_lines_end(f, lines)?
     } else {
         unreachable!("must have lines or bytes passed")
     };
@@ -76,7 +61,7 @@ fn nth_line(buf: &[u8], n: usize) -> (usize, usize) {
     }
 }
 
-fn read_bytes_end(f: &mut File, bytes: i64) -> io::Result<Vec<u8>> {
+pub fn read_bytes_end(f: &mut File, bytes: i64) -> io::Result<Vec<u8>> {
     let max_len = f.metadata()?.len();
     let len = (bytes).clamp(0, max_len as i64);
     let mut buf = vec![0; len as usize];

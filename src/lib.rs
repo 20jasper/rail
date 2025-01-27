@@ -4,33 +4,15 @@ pub mod error;
 use std::{
     fs::File,
     io::{self, Read, Seek},
-    path::PathBuf,
 };
 
 use error::Result;
 
-pub fn tail_file(matches: &clap::ArgMatches) -> Result<String> {
-    let mut f = {
-        let path = matches
-            .get_one::<PathBuf>("PATH")
-            .expect("path is required");
-
-        if !path.exists() {
-            return Err(format!("path {path:?} does not exist").into());
-        }
-        if !path.is_file() {
-            return Err(format!("path {path:?} is not a file").into());
-        }
-        File::open(path).map_err(|_| format!("Error opening {path:?}"))?
-    };
-
-    let follow = matches.get_flag("follow");
-    dbg!(follow);
-
+pub fn tail_file(matches: &clap::ArgMatches, f: &mut File) -> Result<String> {
     let vec = if let Some(&bytes) = matches.get_one::<i64>("bytes") {
-        read_bytes_end(&mut f, bytes)?
+        read_bytes_end(f, bytes)?
     } else if let Some(&lines) = matches.get_one::<usize>("lines") {
-        read_lines_end(&mut f, lines)?
+        read_lines_end(f, lines)?
     } else {
         unreachable!("must have lines or bytes passed")
     };

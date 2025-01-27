@@ -7,11 +7,24 @@ use rail::{read_bytes_end, tail_file};
 fn main() -> Result<()> {
     let matches = commands::cli().get_matches();
 
-    let s = tail_file(&matches)?;
+    let path = matches
+        .get_one::<PathBuf>("PATH")
+        .expect("path is required");
+    let mut f = {
+        if !path.exists() {
+            return Err(format!("path {path:?} does not exist").into());
+        }
+        if !path.is_file() {
+            return Err(format!("path {path:?} is not a file").into());
+        }
+        File::open(path).map_err(|_| format!("Error opening {path:?}"))?
+    };
+
+    let s = tail_file(&matches, &mut f)?;
     print!("{s}");
 
     if matches.get_flag("follow") {
-        listen_for_modifications(matches.get_one::<PathBuf>("PATH").unwrap())?;
+        listen_for_modifications(&mut f, path)?;
     }
 
     Ok(())
@@ -23,68 +36,50 @@ use notify::{
 };
 use std::{
     fs::File,
-    io::{stdout, Read, Seek, Write},
+    io::{stdout, Seek, Write},
     path::{Path, PathBuf},
     sync::mpsc,
 };
 
-fn listen_for_modifications(path: &Path) -> notify::Result<()> {
+fn listen_for_modifications(f: &mut File, path: &Path) -> notify::Result<()> {
     let (tx, rx) = mpsc::channel::<notify::Result<Event>>();
     let mut watcher = notify::recommended_watcher(tx)?;
     watcher.watch(path, RecursiveMode::NonRecursive)?;
 
-    let mut f = File::open(path)?;
     f.seek(std::io::SeekFrom::End(0))?;
     let mut len = f.metadata()?.len();
 
-    // Block forever, printing out events as they come in
     for res in rx {
         match res {
-            Ok(Event {
-                kind: EventKind::Modify(ref kind),
-                attrs,
-                ..
-            }) => {
-                // println!("kind: {:?}. Attrs {attrs:?}", kind);
-                let new_len = f.metadata()?.len();
+            Ok(Event { kind, .. }) => match kind {
+                EventKind::Modify(_) => {
+                    let new_len = f.metadata()?.len();
+                    if new_len <= len + 1 {
+                        // todo, if file is less, print whole file since don't know what happened
+                        // println!("same len or less");
+                        continue;
+                    }
 
-                println!("len, {len} new_len {new_len}");
-                if new_len <= len + 1 {
-                    // todo, if file is less, print whole file since don't know what happened
-                    // println!("same len or less");
-                    continue;
-                }
-
-                let diff = dbg!(new_len - len + 1);
-                len = new_len;
-
-                let vec = read_bytes_end(&mut f, diff as i64)?;
-                dbg!(&vec);
-                if vec.iter().any(|b| b == &'\n') {}
-
-                print!("{}", String::from_utf8(vec).expect("shold be valid utf8"));
-                stdout().flush()?;
-            }
-            Ok(Event {
-                kind: EventKind::Access(AccessKind::Close(AccessMode::Write)),
-                attrs,
-                ..
-            }) => {
-                let new_len = f.metadata()?.len();
-                if new_len != len {
+                    let diff = new_len - len;
                     len = new_len;
-                    // dbg!("File written and closed");
 
-                    let vec = read_bytes_end(&mut f, new_len as i64)?;
-                    print!("{}", String::from_utf8(vec).expect("shold be valid utf8"));
+                    let vec = read_bytes_end(f, diff as i64)?;
+                    print!("{}", String::from_utf8(vec).expect("should be valid utf8"));
                     stdout().flush()?;
-                } else {
-                    println!("no need to write file, unmodified");
                 }
-            }
-            // Ok(Event { kind, attrs, .. }) => println!("{kind:?}, {attrs:?}"),
-            Err(e) => println!("watch error: {:?}", e),
-            _ => (),
+                EventKind::Access(AccessKind::Close(AccessMode::Write)) => {
+                    let new_len = f.metadata()?.len();
+                    if new_len != len {
+                        len = new_len;
+
+                        let vec = read_bytes_end(f, new_len as i64)?;
+                        print!("{}", String::from_utf8(vec).expect("should be valid utf8"));
+                        stdout().flush()?;
+                    }
+                }
+                _ => (),
+            },
+            Err(e) => eprintln!("watch error: {:?}", e),
         }
     }
 

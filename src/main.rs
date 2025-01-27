@@ -22,6 +22,7 @@ fn main() -> Result<()> {
 
     let s = tail_file(&matches, &mut f)?;
     print!("{s}");
+    stdout().flush()?;
 
     if matches.get_flag("follow") {
         listen_for_modifications(&mut f, path)?;

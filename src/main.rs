@@ -10,7 +10,7 @@ use notify::{
 };
 use std::{
     fs::File,
-    io::{stdout, Seek, Write},
+    io::{stdout, Write},
     path::{Path, PathBuf},
     sync::mpsc,
 };
@@ -47,7 +47,6 @@ fn listen_for_modifications(f: &mut File, path: &Path) -> notify::Result<()> {
     let mut watcher = notify::recommended_watcher(tx)?;
     watcher.watch(path, RecursiveMode::NonRecursive)?;
 
-    f.seek(std::io::SeekFrom::End(0))?;
     let mut len = f.metadata()?.len();
 
     for res in rx {
@@ -55,9 +54,8 @@ fn listen_for_modifications(f: &mut File, path: &Path) -> notify::Result<()> {
             Ok(Event { kind, .. }) => match kind {
                 EventKind::Modify(_) => {
                     let new_len = f.metadata()?.len();
+                    // account for new line
                     if new_len <= len + 1 {
-                        // todo, if file is less, print whole file since don't know what happened
-                        // println!("same len or less");
                         continue;
                     }
 

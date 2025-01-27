@@ -69,14 +69,14 @@ fn listen_for_modifications(f: &mut File, path: &Path) -> notify::Result<()> {
                     stdout().flush()?;
                 }
                 EventKind::Access(AccessKind::Close(AccessMode::Write)) => {
-                    let new_len = f.metadata()?.len();
-                    if new_len != len {
-                        len = new_len;
+                    println!("rail: file truncated");
 
-                        let vec = read_bytes_end(f, new_len as i64)?;
-                        print!("{}", String::from_utf8(vec).expect("should be valid utf8"));
-                        stdout().flush()?;
-                    }
+                    let new_len = f.metadata()?.len();
+                    len = new_len;
+
+                    let vec = read_bytes_end(f, new_len as i64)?;
+                    print!("{}", String::from_utf8(vec).expect("should be valid utf8"));
+                    stdout().flush()?;
                 }
                 _ => (),
             },

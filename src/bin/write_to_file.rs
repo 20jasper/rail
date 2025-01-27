@@ -8,8 +8,8 @@ use std::thread::sleep;
 fn main() -> Result<(), Box<dyn Error>> {
     let mut args = env::args();
     args.next();
-    let path = args.next().unwrap_or("test.txt".to_owned());
     let lines = args.next().unwrap_or("true".to_owned()).parse::<bool>()?;
+    let path = args.next().unwrap_or("test.txt".to_owned());
 
     let mut f = File::options().append(true).open(path)?;
 

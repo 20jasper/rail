@@ -1,8 +1,19 @@
 mod commands;
 mod error;
 
-use error::Result;
 use rail::{read_bytes_end, tail_file};
+
+use error::Result;
+use notify::{
+    event::{AccessKind, AccessMode},
+    Event, EventKind, RecursiveMode, Watcher,
+};
+use std::{
+    fs::File,
+    io::{stdout, Seek, Write},
+    path::{Path, PathBuf},
+    sync::mpsc,
+};
 
 fn main() -> Result<()> {
     let matches = commands::cli().get_matches();
@@ -30,17 +41,6 @@ fn main() -> Result<()> {
 
     Ok(())
 }
-
-use notify::{
-    event::{AccessKind, AccessMode},
-    Event, EventKind, RecursiveMode, Watcher,
-};
-use std::{
-    fs::File,
-    io::{stdout, Seek, Write},
-    path::{Path, PathBuf},
-    sync::mpsc,
-};
 
 fn listen_for_modifications(f: &mut File, path: &Path) -> notify::Result<()> {
     let (tx, rx) = mpsc::channel::<notify::Result<Event>>();

@@ -1,18 +1,13 @@
 mod commands;
 mod error;
 
-use rail::{read_bytes_end, tail_file};
+use rail::{follow, tail_file};
 
 use error::Result;
-use notify::{
-    event::{AccessKind, AccessMode},
-    Event, EventKind, RecursiveMode, Watcher,
-};
 use std::{
     fs::File,
-    io::{stdout, Seek, Write},
-    path::{Path, PathBuf},
-    sync::mpsc,
+    io::{stdout, Write},
+    path::PathBuf,
 };
 
 fn main() -> Result<()> {
@@ -35,53 +30,9 @@ fn main() -> Result<()> {
     print!("{s}");
     stdout().flush()?;
 
+    let mut stdout = std::io::stdout();
     if matches.get_flag("follow") {
-        listen_for_modifications(&mut f, path)?;
-    }
-
-    Ok(())
-}
-
-fn listen_for_modifications(f: &mut File, path: &Path) -> notify::Result<()> {
-    let (tx, rx) = mpsc::channel::<notify::Result<Event>>();
-    let mut watcher = notify::recommended_watcher(tx)?;
-    watcher.watch(path, RecursiveMode::NonRecursive)?;
-
-    f.seek(std::io::SeekFrom::End(0))?;
-    let mut len = f.metadata()?.len();
-
-    for res in rx {
-        match res {
-            Ok(Event { kind, .. }) => match kind {
-                EventKind::Modify(_) => {
-                    let new_len = f.metadata()?.len();
-                    if new_len <= len + 1 {
-                        // todo, if file is less, print whole file since don't know what happened
-                        // println!("same len or less");
-                        continue;
-                    }
-
-                    let diff = new_len - len;
-                    len = new_len;
-
-                    let vec = read_bytes_end(f, diff as i64)?;
-                    print!("{}", String::from_utf8(vec).expect("should be valid utf8"));
-                    stdout().flush()?;
-                }
-                EventKind::Access(AccessKind::Close(AccessMode::Write)) => {
-                    println!("rail: file truncated");
-
-                    let new_len = f.metadata()?.len();
-                    len = new_len;
-
-                    let vec = read_bytes_end(f, new_len as i64)?;
-                    print!("{}", String::from_utf8(vec).expect("should be valid utf8"));
-                    stdout().flush()?;
-                }
-                _ => (),
-            },
-            Err(e) => eprintln!("watch error: {:?}", e),
-        }
+        follow::listen_for_modifications(&mut f, path, &mut stdout)?;
     }
 
     Ok(())

@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod error;
+pub mod follow;
 
 use std::{
     fs::File,
